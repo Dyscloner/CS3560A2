@@ -8,6 +8,7 @@ import javax.swing.tree.TreePath;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -36,6 +37,57 @@ public class AdminPanel {
         JButton showGroupTotal = new JButton("Show Group Total");
         JButton showMessageTotal = new JButton("Show Message Total");
         JButton showPositive = new JButton("Show Positive Percentage");
+        JButton validateIDsButton = new JButton("Validate IDs");
+        JButton findLastUpdatedUserButton = new JButton("Find Last Updated User");
+        JButton showUserCreationTime = new JButton("Show User Creation Time");
+        JButton showGroupCreationTime = new JButton("Show Group Creation Time");
+        showUserCreationTime.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) userTree.getLastSelectedPathComponent();
+                if (selectedNode != null && selectedNode.getUserObject() instanceof User) {
+                    User selectedUser = (User) selectedNode.getUserObject();
+                    showCreationTime(selectedUser.getCreationTime());
+                } else {
+                    JOptionPane.showMessageDialog(null, "Please select a User from the tree.");
+                }
+            }
+        });
+
+        showGroupCreationTime.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) userTree.getLastSelectedPathComponent();
+                if (selectedNode != null && selectedNode.getUserObject() instanceof UserGroup) {
+                    UserGroup selectedGroup = (UserGroup) selectedNode.getUserObject();
+                    showCreationTime(selectedGroup.getCreationTime());
+                } else {
+                    JOptionPane.showMessageDialog(null, "Please select a UserGroup from the tree.");
+                }
+            }
+        });
+        findLastUpdatedUserButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                User lastUpdatedUser = findLastUpdatedUser(root);
+                if (lastUpdatedUser != null) {
+                    JOptionPane.showMessageDialog(null, "Last Updated User: " + lastUpdatedUser.getId());
+                } else {
+                    JOptionPane.showMessageDialog(null, "No updates found.");
+                }
+            }
+        });
+        validateIDsButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                boolean allIDsValid = validateAllIDs(root);
+                if (allIDsValid) {
+                    JOptionPane.showMessageDialog(null, "All IDs are valid.");
+                } else {
+                    JOptionPane.showMessageDialog(null, "Invalid IDs found.");
+                }
+            }
+        });
         /// ADD USER
         addUserButton.addActionListener(new ActionListener() {
             @Override
@@ -110,8 +162,6 @@ public class AdminPanel {
         });
 
 
-
-
         userInterface.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -157,7 +207,7 @@ public class AdminPanel {
             @Override
             public void actionPerformed(ActionEvent e) {
                 int messageTotal = countTotalTweets();
-                JOptionPane.showMessageDialog(null, "Total MSG: " + messageTotal);
+           JOptionPane.showMessageDialog(null, "Total MSG: " + messageTotal);
             }
         });
         
@@ -238,10 +288,26 @@ public class AdminPanel {
         constraints.gridx = 0;
         constraints.gridy = 6;
         inputPanel.add(new JLabel(), constraints);
+        
+        constraints.gridx = 2;
+        constraints.gridy = 7;
+        inputPanel.add(validateIDsButton, constraints);
+        
+        constraints.gridx = 3;
+        constraints.gridy = 7;
+        inputPanel.add(findLastUpdatedUserButton, constraints);
+
+        constraints.gridx = 2;
+        constraints.gridy = 8;
+        inputPanel.add(showUserCreationTime, constraints);
+
+        constraints.gridx = 3;
+        constraints.gridy = 8;
+        inputPanel.add(showGroupCreationTime, constraints);
 
         adminPanel.add(inputPanel, BorderLayout.CENTER);
-
         adminFrame.add(adminPanel);
+        
         adminFrame.pack();
         adminFrame.setVisible(true);
     }
@@ -265,7 +331,11 @@ public class AdminPanel {
             }
         }
     }
-
+    private void showCreationTime(long creationTime) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String formattedDate = sdf.format(creationTime);
+        JOptionPane.showMessageDialog(null, "Creation Time: " + formattedDate);
+    }
     private int countTotalTweets() {
       return User.getTotalMessages();
         
@@ -281,6 +351,60 @@ public class AdminPanel {
        
         double percent = (double) totalPositiveTweets / totalTweets * 100;
         return percent;
+    }
+    private boolean validateAllIDs(DefaultMutableTreeNode node) {
+        Set<String> usedIDs = new HashSet<>();
+        return validateIDsRecursive(node, usedIDs);
+    }
+
+    private boolean validateIDsRecursive(DefaultMutableTreeNode node, Set<String> usedIDs) {
+        for (int i = 0; i < node.getChildCount(); i++) {
+            DefaultMutableTreeNode childNode = (DefaultMutableTreeNode) node.getChildAt(i);
+            if (childNode.getUserObject() instanceof UserGroup) {
+                String groupID = ((UserGroup) childNode.getUserObject()).getId();
+                if (!isValidID(groupID, usedIDs)) {
+                    return false;
+                }
+                usedIDs.add(groupID);
+                if (!validateIDsRecursive(childNode, usedIDs)) {
+                    return false;
+                }
+            } else if (childNode.getUserObject() instanceof User) {
+                String userID = ((User) childNode.getUserObject()).getId();
+                if (!isValidID(userID, usedIDs)) {
+                    return false;
+                }
+                usedIDs.add(userID);
+            }
+        }
+        return true;
+    }
+    private User findLastUpdatedUser(DefaultMutableTreeNode node) {
+        long maxUpdateTime = Long.MIN_VALUE;
+        User lastUpdatedUser = null;
+
+        for (int i = 0; i < node.getChildCount(); i++) {
+            DefaultMutableTreeNode childNode = (DefaultMutableTreeNode) node.getChildAt(i);
+            if (childNode.getUserObject() instanceof UserGroup) {
+                User foundInGroup = findLastUpdatedUser(childNode);
+                if (foundInGroup != null && foundInGroup.getLastUpdateTime() > maxUpdateTime) {
+                    maxUpdateTime = foundInGroup.getLastUpdateTime();
+                    lastUpdatedUser = foundInGroup;
+                }
+            } else if (childNode.getUserObject() instanceof User) {
+                User user = (User) childNode.getUserObject();
+                if (user.getLastUpdateTime() > maxUpdateTime) {
+                    maxUpdateTime = user.getLastUpdateTime();
+                    lastUpdatedUser = user;
+                }
+            }
+        }
+
+        return lastUpdatedUser;
+    }
+
+    private boolean isValidID(String id, Set<String> usedIDs) {
+        return id != null && !id.isEmpty() && !usedIDs.contains(id) && !id.contains(" ");
     }
 
     public static void main(String[] args) {

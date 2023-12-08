@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.swing.tree.DefaultMutableTreeNode;
+
 class User implements UserVisitor {
     private String id;
     private ArrayList<User> followers;
@@ -14,7 +16,8 @@ class User implements UserVisitor {
     private List<Observer> observers = new ArrayList<>();
     private static int totalMessages = 0;
     private static int totalpos = 0;
-    
+    private long creationTime;
+    private long lastUpdateTime;
     
     public User(String id) {
         this.id = id;
@@ -22,10 +25,15 @@ class User implements UserVisitor {
         this.followings = new ArrayList<>();
         this.tweets = new ArrayList<>();
         this.userFrames = new ArrayList<>();
+        this.creationTime = System.currentTimeMillis();
+        this.lastUpdateTime = System.currentTimeMillis();
+
         allUsers.put(id, this);
        
     }
-
+    public long getLastUpdatedTime() {
+        return lastUpdateTime;
+    }
     public void accept(Visitor visitor) {
         visitor.visit(this);
     }
@@ -66,7 +74,7 @@ class User implements UserVisitor {
     }
 
     public void postTweet(String tweet) {
-    	
+        lastUpdateTime = System.currentTimeMillis();
     	String tweeted = this.id + ": " + tweet;
         // Update the followers' news feed
         for (User follower : followers) {
@@ -111,5 +119,35 @@ class User implements UserVisitor {
     }
     public static int getTotalpos() {
         return totalpos;
+    }
+    public long getCreationTime() {
+        return creationTime;
+    }
+    private User findLastUpdatedUser(DefaultMutableTreeNode node) {
+        long maxUpdateTime = Long.MIN_VALUE;
+        User lastUpdatedUser = null;
+
+        for (int i = 0; i < node.getChildCount(); i++) {
+            DefaultMutableTreeNode childNode = (DefaultMutableTreeNode) node.getChildAt(i);
+            if (childNode.getUserObject() instanceof UserGroup) {
+                User foundInGroup = findLastUpdatedUser(childNode);
+                if (foundInGroup != null && foundInGroup.getLastUpdateTime() > maxUpdateTime) {
+                    maxUpdateTime = foundInGroup.getLastUpdateTime();
+                    lastUpdatedUser = foundInGroup;
+                }
+            } else if (childNode.getUserObject() instanceof User) {
+                User user = (User) childNode.getUserObject();
+                if (user.getLastUpdateTime() > maxUpdateTime) {
+                    maxUpdateTime = user.getLastUpdateTime();
+                    lastUpdatedUser = user;
+                }
+            }
+        }
+
+        return lastUpdatedUser;
+    }
+    
+    public long getLastUpdateTime() {
+        return lastUpdateTime;
     }
 }
