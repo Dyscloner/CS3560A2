@@ -41,6 +41,21 @@ public class AdminPanel {
         JButton findLastUpdatedUserButton = new JButton("Find Last Updated User");
         JButton showUserCreationTime = new JButton("Show User Creation Time");
         JButton showGroupCreationTime = new JButton("Show Group Creation Time");
+        JButton showLast = new JButton("Show Last Updated Time");
+      
+        showLast.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) userTree.getLastSelectedPathComponent();
+                if (selectedNode != null && selectedNode.getUserObject() instanceof User) {
+                    User selectedUser = (User) selectedNode.getUserObject();
+                    showLastUpdatedTime(selectedUser.getLastUpdateTime());
+                } else {
+                    JOptionPane.showMessageDialog(null, "Please select a User from the tree.");
+                }
+            }
+        });
+
         showUserCreationTime.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -304,7 +319,11 @@ public class AdminPanel {
         constraints.gridx = 3;
         constraints.gridy = 8;
         inputPanel.add(showGroupCreationTime, constraints);
-
+        
+        constraints.gridx = 1;
+        constraints.gridy = 9;
+        inputPanel.add(showLast, constraints);
+        
         adminPanel.add(inputPanel, BorderLayout.CENTER);
         adminFrame.add(adminPanel);
         
@@ -357,6 +376,11 @@ public class AdminPanel {
         return validateIDsRecursive(node, usedIDs);
     }
 
+    private void showLastUpdatedTime(long lastUpdateTime) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String formattedDate = sdf.format(lastUpdateTime);
+        JOptionPane.showMessageDialog(null, "Last Updated Time: " + formattedDate);
+    }
     private boolean validateIDsRecursive(DefaultMutableTreeNode node, Set<String> usedIDs) {
         for (int i = 0; i < node.getChildCount(); i++) {
             DefaultMutableTreeNode childNode = (DefaultMutableTreeNode) node.getChildAt(i);
